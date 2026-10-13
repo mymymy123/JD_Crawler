@@ -6,34 +6,25 @@ from urllib.parse import quote
 import re
 
 
-# 登录会话改到 main() 里创建，这里只留引用，供 search_all_goods 和 cleanup 共用。
-# 放在模块级会导致 import search 就弹出浏览器跑一遍抓取，这里顺手修掉。
 playwright = browser = context = page = None
 
-# 搜索关键词。换商品改这一行就行，比如 "笔记本电脑"、"AirPods"。
+# 搜索关键词
 KEYWORD = "手机"
 MAX_ROUND=60
 
-# 两轮加载之间的间隔（毫秒）。不管是「滚到底端」还是点「下一页」，每轮之间都等这么久。
-# 这是控制请求频率、避开风控的主开关：被验证码/风控拦住就调大，太慢就调小。
-# 参考值：3000 会触发验证，8000 是当前的安全起点。
+# 控制请求频率、
 ROUND_INTERVAL_MS = 8000
-# 间隔的随机浮动区间。实际等待 = ROUND_INTERVAL_MS * uniform(下限, 上限)。
-# 每轮都精确隔 8.000 秒本身就是机器节拍，加抖动更像人手动翻页。
+# 间隔的随机浮动区间
 ROUND_JITTER = (0.8, 1.4)
 
 # 轮询接口返回时的步长（毫秒）
 POLL_STEP_MS = 200
-# 首屏等接口的时长（毫秒）。实测首屏接口经常什么都不返回，首批商品是第一轮滚动时才
-# 到的，所以这个窗口给得很短——久等无益。
+# 首屏等接口的时长（毫秒）
 FIRST_SCREEN_WAIT_MS = 2000
-# 每轮"等这批数据对应的接口返回"的超时（毫秒）。等不到并不代表数据丢了：
-# on_response 一直在监听，迟到的响应照样会进 all_goods，只是算到后面的轮次里，
-# 所以这个值可以给得比较小，省下的是零新增轮次的空等时间。
+# 每轮"等这批数据对应的接口返回"的超时（毫秒）
 RESPONSE_WAIT_MS = 4000
 
-
-# 「下一页」按钮的候选选择器。京东改版频繁，多备几个，最后再退回按文案查找。
+# 「下一页」按钮的候选选择器
 NEXT_BUTTON_SELECTORS = (
     "#J_bottomPage .pn-next",
     ".pn-next",
@@ -84,7 +75,7 @@ def scroll_to_bottom(page, step: int = 1200, pause_ms: int = 400,
 
         if y >= bottom - 5:     # 已经贴底
             return True
-        if y == last_y:         # 发了滚轮事件但页面没动，说明滚不动了
+        if y == last_y:         # 滚不动了
             return False
 
         last_y = y
